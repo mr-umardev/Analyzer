@@ -328,6 +328,8 @@ function App() {
   const inactivityRef = useRef(null)
   const sessionRef = useRef(null)
   const persistRef = useRef(null)
+  const stateRef = useRef(state)
+  const vaultKeyRef = useRef(vaultKey)
   const balanceSectionRef = useRef(null)
   const companySectionRef = useRef(null)
   const balanceChartRef = useRef(null)
@@ -353,6 +355,23 @@ function App() {
   )
 
   useEffect(() => {
+    stateRef.current = state
+  }, [state])
+
+  useEffect(() => {
+    vaultKeyRef.current = vaultKey
+  }, [vaultKey])
+
+  async function flushSave() {
+    const key = vaultKeyRef.current
+    const currentState = stateRef.current
+    if (!key) return
+    clearTimeout(persistRef.current)
+    const payload = await encryptJson(currentState, key)
+    await saveEncryptedSnapshot(payload)
+  }
+
+  useEffect(() => {
     document.documentElement.setAttribute('data-theme', themeId)
     localStorage.setItem(THEME_KEY, themeId)
   }, [themeId])
@@ -369,7 +388,8 @@ function App() {
     return () => clearTimeout(id)
   }, [dialPulsing])
 
-  function lockSession(message = 'Session locked. Enter PIN to continue.') {
+  async function lockSession(message = 'Session locked. Enter PIN to continue.') {
+    await flushSave()
     setPhase('locked')
     setScreen('home')
     setPinInput('')
@@ -414,6 +434,14 @@ function App() {
       window.removeEventListener('blur', onWindowBlur)
     }
   }, [phase])
+
+  useEffect(() => {
+    const onBeforeUnload = () => {
+      flushSave()
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [])
 
   useEffect(() => {
     try {
