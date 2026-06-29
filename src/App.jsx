@@ -700,6 +700,23 @@ function App() {
     })
   }
 
+  function pdfCurrency(value) {
+    const num = Number(value || 0)
+    const abs = Math.abs(num)
+    const [intPart, decPart] = abs.toFixed(2).split('.')
+    let formatted = intPart
+    if (intPart.length > 3) {
+      const last3 = intPart.slice(-3)
+      const rest = intPart.slice(0, -3)
+      const groups = []
+      for (let i = rest.length; i > 0; i -= 2) {
+        groups.unshift(rest.slice(Math.max(0, i - 2), i))
+      }
+      formatted = groups.join(',') + ',' + last3
+    }
+    return `${num < 0 ? '-' : ''}Rs. ${formatted}.${decPart}`
+  }
+
   function recalcTxBalances(transactions) {
     if (transactions.length === 0) return []
     const chrono = [...transactions].reverse()
@@ -1056,13 +1073,13 @@ function App() {
       drawSectionHeading('Key Metrics')
 
       const metricRows = [
-        ['Current Balance', currency(metrics.currentBalance)],
-        ['Lifetime Earnings', currency(metrics.lifetimeEarnings)],
-        ['Career Earnings', currency(metrics.companyEarnings)],
-        ['Total Income', currency(metrics.totalIncome)],
-        ['Total Expenses', currency(metrics.totalExpenses)],
-        ['Total Savings', currency(metrics.totalSavings)],
-        ['Net Worth', currency(metrics.netWorth)],
+        ['Current Balance', pdfCurrency(metrics.currentBalance)],
+        ['Lifetime Earnings', pdfCurrency(metrics.lifetimeEarnings)],
+        ['Career Earnings', pdfCurrency(metrics.companyEarnings)],
+        ['Total Income', pdfCurrency(metrics.totalIncome)],
+        ['Total Expenses', pdfCurrency(metrics.totalExpenses)],
+        ['Total Savings', pdfCurrency(metrics.totalSavings)],
+        ['Net Worth', pdfCurrency(metrics.netWorth)],
         ['Financial Growth', `${metrics.financialGrowth.toFixed(2)}%`],
       ]
 

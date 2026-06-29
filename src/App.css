@@ -310,7 +310,7 @@
 }
 
 .pin-panel p {
-  color: #c8cfda;
+  color: var(--muted);
 }
 
 .lock-quote {
@@ -600,7 +600,7 @@
   justify-self: start;
   border: 1px solid rgba(212, 175, 55, 0.35);
   background: rgba(212, 175, 55, 0.14);
-  color: #f4d67e;
+  color: var(--gold);
   border-radius: 999px;
   font-size: 0.74rem;
   text-transform: uppercase;
@@ -723,14 +723,14 @@
 }
 
 .post-card span {
-  color: #aebcd0;
+  color: var(--muted);
   font-size: 0.76rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
 .post-card strong {
-  color: #f4f8ff;
+  color: var(--heading);
   font-size: 1.18rem;
 }
 
@@ -751,7 +751,7 @@
 
 .home-cta-card p {
   margin: 0;
-  color: #c4d1e0;
+  color: var(--muted);
   font-size: 0.92rem;
 }
 
@@ -1010,12 +1010,12 @@
 }
 
 .metric-card span {
-  color: #b7c1cf;
+  color: var(--muted);
   font-size: 0.88rem;
 }
 
 .metric-card strong {
-  color: #f7fbff;
+  color: var(--heading);
   font-size: 1.12rem;
 }
 
@@ -1105,14 +1105,14 @@ td {
 }
 
 th {
-  color: #d6deeb;
+  color: var(--muted);
   font-weight: 700;
   font-size: 0.82rem;
   text-transform: uppercase;
 }
 
 td {
-  color: #f4f8ff;
+  color: var(--text);
   font-size: 0.92rem;
 }
 
