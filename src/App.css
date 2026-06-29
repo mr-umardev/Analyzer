@@ -1365,3 +1365,62 @@ html {
     text-align: center;
   }
 }
+
+.action-cell {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.btn-edit {
+  background: rgba(212, 175, 55, 0.15);
+  color: #d4af37;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-edit:hover {
+  background: rgba(212, 175, 55, 0.3);
+}
+
+.btn-delete {
+  background: rgba(220, 38, 38, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-delete:hover {
+  background: rgba(220, 38, 38, 0.28);
+}
+
+.editing-row {
+  background: rgba(212, 175, 55, 0.06) !important;
+  outline: 1px solid rgba(212, 175, 55, 0.25);
+}
+
+.editing-row input,
+.editing-row select {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  color: #e5e7eb;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 0.82rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}

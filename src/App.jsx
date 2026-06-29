@@ -325,6 +325,9 @@ function App() {
     bonuses: '',
   })
 
+  const [editingCompanyId, setEditingCompanyId] = useState(null)
+  const [editTx, setEditTx] = useState(null)
+
   const inactivityRef = useRef(null)
   const sessionRef = useRef(null)
   const persistRef = useRef(null)
@@ -697,6 +700,117 @@ function App() {
     })
   }
 
+  function recalcTxBalances(transactions) {
+    if (transactions.length === 0) return []
+    const chrono = [...transactions].reverse()
+    const start = Number(chrono[0].previousBalance || 0)
+    let bal = start
+    const result = chrono.map((tx) => {
+      const prev = bal
+      const amt = Number(tx.amount || 0)
+      bal = tx.direction === 'add' ? prev + amt : prev - amt
+      return {
+        ...tx,
+        previousBalance: Math.round(prev * 100) / 100,
+        resultingBalance: Math.round(bal * 100) / 100,
+      }
+    })
+    return result.reverse()
+  }
+
+  function deleteCompany(id) {
+    setState((prev) => ({
+      ...prev,
+      companies: prev.companies.filter((c) => c.id !== id),
+      updatedAt: toIsoNow(),
+    }))
+    if (editingCompanyId === id) {
+      setEditingCompanyId(null)
+      setCompanyForm({ companyName: '', role: '', joiningDate: '', leavingDate: '', monthlySalary: '', promotions: '', newMonthlySalary: '', promotedMonths: '', bonuses: '' })
+    }
+  }
+
+  function startEditCompany(company) {
+    setEditingCompanyId(company.id)
+    setCompanyForm({
+      companyName: company.companyName,
+      role: company.role,
+      joiningDate: company.joiningDate,
+      leavingDate: company.leavingDate || '',
+      monthlySalary: String(company.monthlySalary),
+      promotions: String(company.promotions || ''),
+      newMonthlySalary: company.newMonthlySalary ? String(company.newMonthlySalary) : '',
+      promotedMonths: company.promotedMonths ? String(company.promotedMonths) : '',
+      bonuses: company.bonuses ? String(company.bonuses) : '',
+    })
+    companySectionRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  function cancelEditCompany() {
+    setEditingCompanyId(null)
+    setCompanyForm({ companyName: '', role: '', joiningDate: '', leavingDate: '', monthlySalary: '', promotions: '', newMonthlySalary: '', promotedMonths: '', bonuses: '' })
+    setCompanyError('')
+  }
+
+  function deleteTx(id) {
+    setState((prev) => {
+      const chrono = [...prev.transactions].reverse()
+      const start = chrono.length > 0 ? Number(chrono[0].previousBalance || 0) : 0
+      const filtered = chrono.filter((tx) => tx.id !== id)
+      let bal = start
+      const recalculated = filtered.map((tx) => {
+        const p = bal
+        const amt = Number(tx.amount || 0)
+        bal = tx.direction === 'add' ? p + amt : p - amt
+        return { ...tx, previousBalance: Math.round(p * 100) / 100, resultingBalance: Math.round(bal * 100) / 100 }
+      })
+      return {
+        ...prev,
+        transactions: recalculated.reverse(),
+        mainBalance: recalculated.length > 0 ? recalculated[recalculated.length - 1].resultingBalance : start,
+        updatedAt: toIsoNow(),
+      }
+    })
+    if (editTx?.id === id) setEditTx(null)
+  }
+
+  function startEditTx(tx) {
+    setEditTx({ id: tx.id, kind: tx.kind, direction: tx.direction, amount: String(tx.amount), note: tx.note || '' })
+  }
+
+  function saveEditTx(event) {
+    event.preventDefault()
+    setFormError('')
+    const amount = parseAmount(editTx.amount)
+    if (amount === null) {
+      setFormError('Amount must be a valid number greater than 0.')
+      return
+    }
+    setState((prev) => {
+      const chrono = [...prev.transactions].reverse()
+      const start = chrono.length > 0 ? Number(chrono[0].previousBalance || 0) : 0
+      const updated = chrono.map((tx) =>
+        tx.id === editTx.id
+          ? { ...tx, kind: editTx.kind, direction: editTx.direction, amount, note: sanitizeNote(editTx.note) }
+          : tx,
+      )
+      let bal = start
+      const recalculated = updated.map((tx) => {
+        const p = bal
+        const amt = Number(tx.amount || 0)
+        bal = tx.direction === 'add' ? p + amt : p - amt
+        return { ...tx, previousBalance: Math.round(p * 100) / 100, resultingBalance: Math.round(bal * 100) / 100 }
+      })
+      return {
+        ...prev,
+        transactions: recalculated.reverse(),
+        mainBalance: recalculated.length > 0 ? recalculated[recalculated.length - 1].resultingBalance : start,
+        updatedAt: toIsoNow(),
+      }
+    })
+    setEditTx(null)
+  }
+
   function submitCompany(event) {
     event.preventDefault()
     setCompanyError('')
@@ -746,25 +860,34 @@ function App() {
       return
     }
 
-    setState((prev) => ({
-      ...prev,
-      companies: [
-        {
-          id: crypto.randomUUID(),
-          companyName: companyForm.companyName.trim().slice(0, 80),
-          role: companyForm.role.trim().slice(0, 80),
-          joiningDate,
-          leavingDate,
-          monthlySalary,
-          promotions,
-          newMonthlySalary,
-          promotedMonths,
-          bonuses,
-        },
-        ...prev.companies,
-      ],
-      updatedAt: toIsoNow(),
-    }))
+    const companyData = {
+      companyName: companyForm.companyName.trim().slice(0, 80),
+      role: companyForm.role.trim().slice(0, 80),
+      joiningDate,
+      leavingDate,
+      monthlySalary,
+      promotions,
+      newMonthlySalary,
+      promotedMonths,
+      bonuses,
+    }
+
+    if (editingCompanyId) {
+      setState((prev) => ({
+        ...prev,
+        companies: prev.companies.map((c) =>
+          c.id === editingCompanyId ? { ...c, ...companyData } : c,
+        ),
+        updatedAt: toIsoNow(),
+      }))
+      setEditingCompanyId(null)
+    } else {
+      setState((prev) => ({
+        ...prev,
+        companies: [{ id: crypto.randomUUID(), ...companyData }, ...prev.companies],
+        updatedAt: toIsoNow(),
+      }))
+    }
 
     setCompanyForm({
       companyName: '',
@@ -1895,7 +2018,15 @@ function App() {
                 }
                 placeholder="Bonuses"
               />
-              <button type="submit">Add Company</button>
+              <div className="form-actions">
+                <button type="submit">{editingCompanyId ? 'Update Company' : 'Add Company'}</button>
+                {editingCompanyId && (
+                  <button type="button" className="secondary" onClick={cancelEditCompany}>
+                    Cancel Edit
+                  </button>
+                )}
+              </div>
+              {companyError && <div className="error-text">{companyError}</div>}
             </form>
 
             <div className="companies-table-wrap">
@@ -1910,11 +2041,12 @@ function App() {
                     <th>New Salary</th>
                     <th>Bonuses</th>
                     <th>Total Earnings</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {state.companies.map((company) => (
-                    <tr key={company.id}>
+                    <tr key={company.id} className={editingCompanyId === company.id ? 'editing-row' : ''}>
                       <td>{company.companyName}</td>
                       <td>{company.role}</td>
                       <td>{companyDurationLabel(company)}</td>
@@ -1923,6 +2055,22 @@ function App() {
                       <td>{company.newMonthlySalary ? currency(company.newMonthlySalary) : '-'}</td>
                       <td>{currency(company.bonuses)}</td>
                       <td>{currency(companyTotalEarnings(company))}</td>
+                      <td className="action-cell">
+                        <button
+                          type="button"
+                          className="btn-edit"
+                          onClick={() => startEditCompany(company)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-delete"
+                          onClick={() => deleteCompany(company.id)}
+                        >
+                          Delete
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -2107,26 +2255,99 @@ function App() {
                     <th>Note</th>
                     <th>Previous Balance</th>
                     <th>Resulting Balance</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {state.transactions.map((tx) => (
-                    <tr key={tx.id}>
-                      <td>{new Date(tx.timestamp).toLocaleString()}</td>
-                      <td>{tx.kind}</td>
-                      <td>{tx.direction}</td>
-                      <td>{currency(tx.amount)}</td>
-                      <td>{tx.note || '-'}</td>
-                      <td>{currency(tx.previousBalance)}</td>
-                      <td>{currency(tx.resultingBalance)}</td>
-                    </tr>
-                  ))}
+                  {state.transactions.map((tx) =>
+                    editTx?.id === tx.id ? (
+                      <tr key={tx.id} className="editing-row">
+                        <td>{new Date(tx.timestamp).toLocaleString()}</td>
+                        <td>
+                          <select
+                            value={editTx.kind}
+                            onChange={(e) => setEditTx((p) => ({ ...p, kind: e.target.value }))}
+                          >
+                            <option value="income">Income</option>
+                            <option value="expenses">Expenses</option>
+                            <option value="savings">Savings</option>
+                            <option value="investments">Investments</option>
+                            <option value="transfers">Transfers</option>
+                          </select>
+                        </td>
+                        <td>
+                          <select
+                            value={editTx.direction}
+                            onChange={(e) => setEditTx((p) => ({ ...p, direction: e.target.value }))}
+                          >
+                            <option value="add">Add</option>
+                            <option value="subtract">Subtract</option>
+                          </select>
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={editTx.amount}
+                            onChange={(e) => setEditTx((p) => ({ ...p, amount: e.target.value }))}
+                            style={{ width: '100px' }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            maxLength={120}
+                            value={editTx.note}
+                            onChange={(e) => setEditTx((p) => ({ ...p, note: e.target.value }))}
+                            style={{ width: '140px' }}
+                          />
+                        </td>
+                        <td>{currency(tx.previousBalance)}</td>
+                        <td>{currency(tx.resultingBalance)}</td>
+                        <td className="action-cell">
+                          <button type="button" className="btn-edit" onClick={saveEditTx}>
+                            Save
+                          </button>
+                          <button type="button" className="secondary" onClick={() => setEditTx(null)}>
+                            Cancel
+                          </button>
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={tx.id}>
+                        <td>{new Date(tx.timestamp).toLocaleString()}</td>
+                        <td>{tx.kind}</td>
+                        <td>{tx.direction}</td>
+                        <td>{currency(tx.amount)}</td>
+                        <td>{tx.note || '-'}</td>
+                        <td>{currency(tx.previousBalance)}</td>
+                        <td>{currency(tx.resultingBalance)}</td>
+                        <td className="action-cell">
+                          <button
+                            type="button"
+                            className="btn-edit"
+                            onClick={() => startEditTx(tx)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-delete"
+                            onClick={() => deleteTx(tx.id)}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ),
+                  )}
                 </tbody>
               </table>
             </div>
           </section>
 
-          {(formError || companyError) && <div className="error-text inline">{formError || companyError}</div>}
+          {formError && <div className="error-text inline">{formError}</div>}
         </div>
       )}
     </div>
