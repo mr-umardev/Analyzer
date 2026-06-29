@@ -15,8 +15,11 @@
   min-height: 100svh;
   display: grid;
   place-items: center;
+  align-content: center;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 1.5rem 0;
   background:
     radial-gradient(
       130% 88% at 15% 5%,
@@ -296,11 +299,11 @@
 .pin-panel {
   position: relative;
   z-index: 4;
-  width: min(560px, 92vw);
-  padding: 2.2rem;
+  width: min(520px, 92vw);
+  padding: 1.4rem 1.8rem;
   border-radius: 1.5rem;
   display: grid;
-  gap: 0.9rem;
+  gap: 0.55rem;
   text-align: center;
 }
 
@@ -315,8 +318,8 @@
 
 .lock-quote {
   position: relative;
-  margin: 0.35rem 0 0.7rem;
-  padding: 1.1rem 1.2rem 0.8rem;
+  margin: 0;
+  padding: 0.65rem 1rem 0.55rem;
   border-radius: 1rem;
   border: 1px solid var(--border);
   background: linear-gradient(145deg, rgba(15, 25, 39, 0.72), rgba(10, 16, 26, 0.78));
@@ -350,8 +353,8 @@
   display: block;
   position: relative;
   z-index: 1;
-  padding: 0.35rem 1.3rem 0.1rem;
-  font-size: clamp(1.22rem, 2.9vw, 1.95rem);
+  padding: 0.2rem 1.1rem 0.05rem;
+  font-size: clamp(1rem, 2.4vw, 1.45rem);
   line-height: 1.4;
   font-weight: 700;
   color: var(--heading);
@@ -362,7 +365,7 @@
 
 .lock-quote-source {
   display: block;
-  margin-top: 0.65rem;
+  margin-top: 0.35rem;
   padding-left: 1.35rem;
   font-style: normal;
   color: var(--muted);
@@ -439,8 +442,8 @@
 
 .safe-dial {
   position: relative;
-  width: 290px;
-  height: 290px;
+  width: min(240px, 72vw);
+  height: min(240px, 72vw);
   aspect-ratio: 1 / 1;
   margin: 0.1rem auto;
   border-radius: 50%;
@@ -1363,6 +1366,81 @@ html {
   .import-label {
     flex: 1;
     text-align: center;
+  }
+}
+
+@media (max-height: 900px) {
+  .lock-quote {
+    display: none;
+  }
+
+  .pin-panel {
+    gap: 0.5rem;
+    padding: 1.2rem 1.6rem;
+  }
+
+  .safe-dial {
+    width: 210px;
+    height: 210px;
+  }
+
+  .pin-panel .dial-key {
+    width: 40px;
+    min-width: 40px;
+    max-width: 40px;
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
+  }
+
+  .dial-center {
+    width: 70px;
+    height: 70px;
+  }
+}
+
+@media (max-height: 680px) {
+  .pin-panel {
+    gap: 0.35rem;
+    padding: 0.85rem 1.2rem;
+  }
+
+  .pin-panel h1 {
+    font-size: 1.25rem;
+  }
+
+  .pin-panel > p {
+    display: none;
+  }
+
+  .liquid-theme-row {
+    padding: 0.35rem 0.6rem;
+  }
+
+  .safe-dial {
+    width: 180px;
+    height: 180px;
+  }
+
+  .pin-panel .dial-key {
+    width: 34px;
+    min-width: 34px;
+    max-width: 34px;
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    font-size: 0.85rem;
+  }
+
+  .dial-center {
+    width: 58px;
+    height: 58px;
+    font-size: 0.75rem;
+  }
+
+  .pin-display {
+    padding: 0.45rem 0.75rem;
+    min-height: 2rem;
   }
 }
 
