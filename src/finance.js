@@ -147,7 +147,7 @@ export function computeMetrics(state) {
   const totalExpenses = roundCurrency(Math.max(0, totals.expenses))
   const totalSavings = roundCurrency(totals.savings)
   const netWorth = roundCurrency(currentBalance + Math.max(0, totals.investments))
-  const lifetimeEarnings = roundCurrency(totalIncome + companyEarnings)
+  const lifetimeEarnings = roundCurrency(companyEarnings)
 
   return {
     currentBalance: roundCurrency(currentBalance),

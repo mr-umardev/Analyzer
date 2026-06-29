@@ -971,35 +971,20 @@ function App() {
     }
   }
 
-  async function readChartSnapshot(chartRef) {
+  function readChartSnapshot(chartRef) {
     const chart = chartRef.current
-    if (!chart || typeof chart.toBase64Image !== 'function' || typeof chart.resize !== 'function') {
+    if (!chart || typeof chart.toBase64Image !== 'function') {
       return null
     }
-
-    const sourceWidth = Number(chart.width || chart.canvas?.width || 0)
-    const sourceHeight = Number(chart.height || chart.canvas?.height || 0)
+    const canvas = chart.canvas
+    const sourceWidth = Number(canvas?.width || chart.width || 0)
+    const sourceHeight = Number(canvas?.height || chart.height || 0)
     if (!sourceWidth || !sourceHeight) {
       return null
     }
-
-    const exportWidth = Math.max(1200, sourceWidth)
-    const exportHeight = Math.max(700, Math.round(exportWidth * (sourceHeight / sourceWidth)))
-
-    chart.resize(exportWidth, exportHeight)
-    chart.update('none')
-    await new Promise((resolve) => requestAnimationFrame(resolve))
-
     const image = chart.toBase64Image('image/png', 1)
-
-    chart.resize(sourceWidth, sourceHeight)
-    chart.update('none')
-
-    return {
-      image,
-      width: exportWidth,
-      height: exportHeight,
-    }
+    if (!image || image.length < 100) return null
+    return { image, width: sourceWidth, height: sourceHeight }
   }
 
   async function readPublicImageDataUrl(path) {
@@ -1156,7 +1141,7 @@ function App() {
 
       const preparedCharts = []
       for (const [title, chartRef] of chartBlocks) {
-        const snapshot = await readChartSnapshot(chartRef)
+        const snapshot = readChartSnapshot(chartRef)
         if (!snapshot) {
           continue
         }
