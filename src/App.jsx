@@ -357,6 +357,41 @@ function App() {
     [state.transactions],
   )
 
+  const chartOptions = useMemo(() => {
+    const style = getComputedStyle(document.documentElement)
+    const textColor = style.getPropertyValue('--text').trim() || '#e4ebf6'
+    const mutedColor = style.getPropertyValue('--muted').trim() || '#a9b7ca'
+    return {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: textColor, font: { size: 12 } } },
+      },
+      scales: {
+        x: {
+          ticks: { color: textColor },
+          grid: { color: `${mutedColor}28` },
+          border: { color: `${mutedColor}40` },
+        },
+        y: {
+          ticks: { color: textColor },
+          grid: { color: `${mutedColor}28` },
+          border: { color: `${mutedColor}40` },
+        },
+      },
+    }
+  }, [themeId])
+
+  const pieOptions = useMemo(() => {
+    const style = getComputedStyle(document.documentElement)
+    const textColor = style.getPropertyValue('--text').trim() || '#e4ebf6'
+    return {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: textColor, font: { size: 12 } } },
+      },
+    }
+  }, [themeId])
+
   useEffect(() => {
     stateRef.current = state
   }, [state])
@@ -1597,25 +1632,26 @@ function App() {
                   <h4>Balance and Flow Trends</h4>
                   <Line
                     ref={balanceChartRef}
+                    options={chartOptions}
                     data={{
                       labels: timelineSeries.labels,
                       datasets: [
                         {
                           label: 'Balance',
                           data: timelineSeries.balanceLine,
-                          borderColor: '#d4af37',
-                          backgroundColor: 'rgba(212,175,55,0.2)',
+                          borderColor: '#f59e0b',
+                          backgroundColor: 'rgba(245,158,11,0.18)',
                           fill: true,
                         },
                         {
                           label: 'Additions',
                           data: timelineSeries.additionsLine,
-                          borderColor: '#16a34a',
+                          borderColor: '#22c55e',
                         },
                         {
                           label: 'Deductions',
                           data: timelineSeries.deductionsLine,
-                          borderColor: '#dc2626',
+                          borderColor: '#ef4444',
                         },
                       ],
                     }}
@@ -1628,23 +1664,24 @@ function App() {
                   <h4>Monthly Snapshot (Read-Only)</h4>
                   <Bar
                     ref={monthlyChartRef}
+                    options={chartOptions}
                     data={{
                       labels: monthlySeries.labels,
                       datasets: [
                         {
                           label: 'Income',
                           data: monthlySeries.income,
-                          backgroundColor: '#d4af37',
+                          backgroundColor: '#f59e0b',
                         },
                         {
                           label: 'Expenses',
                           data: monthlySeries.expenses,
-                          backgroundColor: '#7f1d1d',
+                          backgroundColor: '#ef4444',
                         },
                         {
                           label: 'Savings',
                           data: monthlySeries.savings,
-                          backgroundColor: '#0f766e',
+                          backgroundColor: '#14b8a6',
                         },
                       ],
                     }}
@@ -1656,16 +1693,17 @@ function App() {
                 <article className="panel glass">
                   <h4>Distribution and Yearly Report</h4>
                   <div className="readonly-split">
-                    <Pie ref={distributionChartRef} data={pieData} />
+                    <Pie ref={distributionChartRef} options={pieOptions} data={pieData} />
                     <Bar
                       ref={yearlyChartRef}
+                      options={chartOptions}
                       data={{
                         labels: yearlySeries.labels,
                         datasets: [
                           {
                             label: 'Yearly Net Flow',
                             data: yearlySeries.net,
-                            backgroundColor: '#64748b',
+                            backgroundColor: '#6366f1',
                           },
                         ],
                       }}
@@ -2136,14 +2174,15 @@ function App() {
               <h4>Balance Changes Over Time</h4>
               <Line
                 ref={balanceChartRef}
+                options={chartOptions}
                 data={{
                   labels: timelineSeries.labels,
                   datasets: [
                     {
                       label: 'Balance',
                       data: timelineSeries.balanceLine,
-                      borderColor: '#d4af37',
-                      backgroundColor: 'rgba(212,175,55,0.2)',
+                      borderColor: '#f59e0b',
+                      backgroundColor: 'rgba(245,158,11,0.18)',
                       fill: true,
                     },
                   ],
@@ -2155,18 +2194,19 @@ function App() {
               <h4>Additions vs Deductions</h4>
               <Line
                 ref={flowChartRef}
+                options={chartOptions}
                 data={{
                   labels: timelineSeries.labels,
                   datasets: [
                     {
                       label: 'Additions',
                       data: timelineSeries.additionsLine,
-                      borderColor: '#16a34a',
+                      borderColor: '#22c55e',
                     },
                     {
                       label: 'Deductions',
                       data: timelineSeries.deductionsLine,
-                      borderColor: '#dc2626',
+                      borderColor: '#ef4444',
                     },
                   ],
                 }}
@@ -2177,13 +2217,14 @@ function App() {
               <h4>Savings Growth</h4>
               <Line
                 ref={savingsChartRef}
+                options={chartOptions}
                 data={{
                   labels: timelineSeries.labels,
                   datasets: [
                     {
                       label: 'Savings',
                       data: timelineSeries.savingsGrowthLine,
-                      borderColor: '#0f766e',
+                      borderColor: '#14b8a6',
                     },
                   ],
                 }}
@@ -2194,23 +2235,24 @@ function App() {
               <h4>Monthly Reports</h4>
               <Bar
                 ref={monthlyChartRef}
+                options={chartOptions}
                 data={{
                   labels: monthlySeries.labels,
                   datasets: [
                     {
                       label: 'Income',
                       data: monthlySeries.income,
-                      backgroundColor: '#d4af37',
+                      backgroundColor: '#f59e0b',
                     },
                     {
                       label: 'Expenses',
                       data: monthlySeries.expenses,
-                      backgroundColor: '#7f1d1d',
+                      backgroundColor: '#ef4444',
                     },
                     {
                       label: 'Savings',
                       data: monthlySeries.savings,
-                      backgroundColor: '#0f766e',
+                      backgroundColor: '#14b8a6',
                     },
                   ],
                 }}
@@ -2221,13 +2263,14 @@ function App() {
               <h4>Yearly Reports</h4>
               <Bar
                 ref={yearlyChartRef}
+                options={chartOptions}
                 data={{
                   labels: yearlySeries.labels,
                   datasets: [
                     {
                       label: 'Yearly Net Flow',
                       data: yearlySeries.net,
-                      backgroundColor: '#64748b',
+                      backgroundColor: '#6366f1',
                     },
                   ],
                 }}
@@ -2236,21 +2279,22 @@ function App() {
 
             <article className="panel glass">
               <h4>Financial Distribution</h4>
-              <Pie ref={distributionChartRef} data={pieData} />
+              <Pie ref={distributionChartRef} options={pieOptions} data={pieData} />
             </article>
 
             <article className="panel glass full-span">
               <h4>Company Earnings Growth</h4>
               <Line
                 ref={companyGrowthChartRef}
+                options={chartOptions}
                 data={{
                   labels: companyGrowth.labels,
                   datasets: [
                     {
                       label: 'Career Earnings',
                       data: companyGrowth.values,
-                      borderColor: '#b0b7c3',
-                      backgroundColor: 'rgba(176,183,195,0.2)',
+                      borderColor: '#a78bfa',
+                      backgroundColor: 'rgba(167,139,250,0.18)',
                       fill: true,
                     },
                   ],
