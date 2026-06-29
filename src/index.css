@@ -1,0 +1,212 @@
+:root {
+  --bg: #060b14;
+  --bg-alt: #101b2b;
+  --text: #e4ebf6;
+  --heading: #f5f9ff;
+  --muted: #a9b7ca;
+  --gold: #d4af37;
+  --silver: #b0b7c3;
+  --accent: #d4af37;
+  --border: rgba(212, 175, 55, 0.24);
+  --panel-bg: linear-gradient(150deg, rgba(22, 35, 53, 0.72), rgba(13, 22, 35, 0.74));
+  --input-bg: rgba(8, 12, 20, 0.63);
+  --button-bg: linear-gradient(130deg, rgba(212, 175, 55, 0.28), rgba(176, 183, 195, 0.16));
+}
+
+:root[data-theme='light-ivory'] {
+  --bg: #f4efe5;
+  --bg-alt: #fff8ee;
+  --text: #31261c;
+  --heading: #1f1610;
+  --muted: #6f6253;
+  --gold: #9f7b2b;
+  --silver: #7f7468;
+  --accent: #9f7b2b;
+  --border: rgba(121, 93, 32, 0.3);
+  --panel-bg: linear-gradient(150deg, rgba(255, 249, 240, 0.88), rgba(248, 238, 224, 0.82));
+  --input-bg: rgba(255, 251, 243, 0.92);
+  --button-bg: linear-gradient(130deg, rgba(173, 137, 55, 0.36), rgba(227, 213, 184, 0.35));
+}
+
+:root[data-theme='emerald-night'] {
+  --bg: #051513;
+  --bg-alt: #0d2522;
+  --text: #daf8ef;
+  --heading: #effff9;
+  --muted: #91c9b7;
+  --gold: #3ddc97;
+  --silver: #82b7a6;
+  --accent: #3ddc97;
+  --border: rgba(61, 220, 151, 0.28);
+  --panel-bg: linear-gradient(150deg, rgba(9, 36, 31, 0.8), rgba(6, 25, 22, 0.82));
+  --input-bg: rgba(8, 28, 24, 0.72);
+  --button-bg: linear-gradient(130deg, rgba(61, 220, 151, 0.35), rgba(71, 154, 129, 0.24));
+}
+
+:root[data-theme='arctic-frost'] {
+  --bg: #eaf3fa;
+  --bg-alt: #dce8f5;
+  --text: #1d2f44;
+  --heading: #0c2239;
+  --muted: #4c6a88;
+  --gold: #2f70a9;
+  --silver: #5a7f9f;
+  --accent: #2f70a9;
+  --border: rgba(47, 112, 169, 0.26);
+  --panel-bg: linear-gradient(150deg, rgba(245, 251, 255, 0.9), rgba(227, 239, 250, 0.85));
+  --input-bg: rgba(255, 255, 255, 0.88);
+  --button-bg: linear-gradient(130deg, rgba(47, 112, 169, 0.32), rgba(139, 188, 227, 0.28));
+}
+
+:root[data-theme='ocean-deep'] {
+  --bg: #041023;
+  --bg-alt: #0b2240;
+  --text: #d7eeff;
+  --heading: #ecf8ff;
+  --muted: #92bcdd;
+  --gold: #4bc0ff;
+  --silver: #7ba3c1;
+  --accent: #4bc0ff;
+  --border: rgba(75, 192, 255, 0.28);
+  --panel-bg: linear-gradient(150deg, rgba(9, 33, 64, 0.82), rgba(4, 20, 40, 0.8));
+  --input-bg: rgba(8, 24, 48, 0.7);
+  --button-bg: linear-gradient(130deg, rgba(75, 192, 255, 0.34), rgba(38, 104, 165, 0.28));
+}
+
+:root[data-theme='ruby-ink'] {
+  --bg: #1a0811;
+  --bg-alt: #2d101d;
+  --text: #ffe7ef;
+  --heading: #fff2f7;
+  --muted: #d9a7bc;
+  --gold: #ff4f87;
+  --silver: #c891a8;
+  --accent: #ff4f87;
+  --border: rgba(255, 79, 135, 0.3);
+  --panel-bg: linear-gradient(150deg, rgba(49, 17, 32, 0.82), rgba(27, 9, 18, 0.85));
+  --input-bg: rgba(37, 12, 24, 0.72);
+  --button-bg: linear-gradient(130deg, rgba(255, 79, 135, 0.35), rgba(151, 54, 91, 0.28));
+}
+
+:root[data-theme='sunset-copper'] {
+  --bg: #2a1306;
+  --bg-alt: #41200d;
+  --text: #ffe7d6;
+  --heading: #fff2e8;
+  --muted: #d8a889;
+  --gold: #ff9340;
+  --silver: #c7a488;
+  --accent: #ff9340;
+  --border: rgba(255, 147, 64, 0.3);
+  --panel-bg: linear-gradient(150deg, rgba(66, 31, 14, 0.82), rgba(36, 16, 8, 0.82));
+  --input-bg: rgba(46, 21, 10, 0.72);
+  --button-bg: linear-gradient(130deg, rgba(255, 147, 64, 0.36), rgba(157, 93, 46, 0.3));
+}
+
+:root[data-theme='forest-ledger'] {
+  --bg: #08170b;
+  --bg-alt: #142c18;
+  --text: #dff8df;
+  --heading: #f1fff1;
+  --muted: #9fc5a0;
+  --gold: #55c271;
+  --silver: #90b296;
+  --accent: #55c271;
+  --border: rgba(85, 194, 113, 0.3);
+  --panel-bg: linear-gradient(150deg, rgba(20, 44, 24, 0.82), rgba(10, 24, 13, 0.82));
+  --input-bg: rgba(15, 31, 18, 0.72);
+  --button-bg: linear-gradient(130deg, rgba(85, 194, 113, 0.35), rgba(57, 120, 72, 0.28));
+}
+
+:root[data-theme='midnight-indigo'] {
+  --bg: #090a1d;
+  --bg-alt: #171a3e;
+  --text: #e7e9ff;
+  --heading: #f2f4ff;
+  --muted: #acb0db;
+  --gold: #8d7bff;
+  --silver: #a2a8cf;
+  --accent: #8d7bff;
+  --border: rgba(141, 123, 255, 0.3);
+  --panel-bg: linear-gradient(150deg, rgba(23, 26, 62, 0.82), rgba(11, 13, 32, 0.84));
+  --input-bg: rgba(14, 16, 41, 0.72);
+  --button-bg: linear-gradient(130deg, rgba(141, 123, 255, 0.36), rgba(78, 84, 165, 0.28));
+}
+
+:root[data-theme='graphite-silver'] {
+  --bg: #121417;
+  --bg-alt: #1e2228;
+  --text: #ecedf0;
+  --heading: #fafbfd;
+  --muted: #aeb5bf;
+  --gold: #d0d4db;
+  --silver: #c2c8d1;
+  --accent: #d0d4db;
+  --border: rgba(208, 212, 219, 0.28);
+  --panel-bg: linear-gradient(150deg, rgba(35, 40, 48, 0.82), rgba(19, 22, 27, 0.82));
+  --input-bg: rgba(23, 26, 31, 0.72);
+  --button-bg: linear-gradient(130deg, rgba(208, 212, 219, 0.34), rgba(128, 137, 151, 0.28));
+}
+
+:root[data-theme='desert-sand'] {
+  --bg: #f2e7d8;
+  --bg-alt: #ead9c5;
+  --text: #392b1d;
+  --heading: #21170f;
+  --muted: #7b6650;
+  --gold: #b07e42;
+  --silver: #947d65;
+  --accent: #b07e42;
+  --border: rgba(176, 126, 66, 0.3);
+  --panel-bg: linear-gradient(150deg, rgba(252, 244, 233, 0.9), rgba(241, 226, 204, 0.84));
+  --input-bg: rgba(255, 249, 241, 0.9);
+  --button-bg: linear-gradient(130deg, rgba(176, 126, 66, 0.34), rgba(210, 175, 129, 0.32));
+}
+
+:root[data-theme='neon-cyan'] {
+  --bg: #041417;
+  --bg-alt: #0b252a;
+  --text: #d9fbff;
+  --heading: #ecffff;
+  --muted: #90d7dd;
+  --gold: #2ff3ff;
+  --silver: #8ec5ca;
+  --accent: #2ff3ff;
+  --border: rgba(47, 243, 255, 0.3);
+  --panel-bg: linear-gradient(150deg, rgba(11, 37, 42, 0.82), rgba(7, 20, 23, 0.84));
+  --input-bg: rgba(10, 29, 33, 0.72);
+  --button-bg: linear-gradient(130deg, rgba(47, 243, 255, 0.36), rgba(26, 133, 143, 0.28));
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--text);
+  font-family: Avenir Next, Segoe UI, Candara, sans-serif;
+  background: linear-gradient(145deg, var(--bg), var(--bg-alt));
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: Bahnschrift, Franklin Gothic Medium, Arial Narrow, sans-serif;
+  letter-spacing: 0.02em;
+  color: var(--heading);
+}
+
+p {
+  margin: 0;
+}
