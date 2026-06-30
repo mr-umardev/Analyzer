@@ -58,8 +58,8 @@ const LEGACY_VAULT_PIN = String(
   .replace(/\D/g, '')
   .slice(0, 10)
 const VAULT_PIN_HASH = String(import.meta.env.VITE_VAULT_PIN_HASH || '').trim().toLowerCase()
-const LOCK_AFTER_INACTIVITY_MS = 3 * 60 * 1000
-const SESSION_TIMEOUT_MS = 20 * 60 * 1000
+const LOCK_AFTER_INACTIVITY_MS = 30 * 60 * 1000
+const SESSION_TIMEOUT_MS = 8 * 60 * 60 * 1000
 const MAX_FAILED_ATTEMPTS = 5
 const LOCKOUT_MS = 10 * 60 * 1000
 const MAX_BACKUP_FILE_BYTES = 2 * 1024 * 1024
@@ -467,41 +467,27 @@ function App() {
   useEffect(() => {
     const onVisibilityChange = () => {
       if (document.hidden && phase === 'unlocked') {
-        lockSession('Session hidden. Vault locked.')
-      }
-    }
-
-    const onWindowBlur = () => {
-      if (phase === 'unlocked') {
-        lockSession('Window focus lost. Vault locked.')
+        flushSave()
       }
     }
 
     document.addEventListener('visibilitychange', onVisibilityChange)
-    window.addEventListener('blur', onWindowBlur)
 
     return () => {
       document.removeEventListener('visibilitychange', onVisibilityChange)
-      window.removeEventListener('blur', onWindowBlur)
     }
   }, [phase])
 
   useEffect(() => {
     const onBeforeUnload = () => {
-      flushSave()
+      const key = vaultKeyRef.current
+      const currentState = stateRef.current
+      if (!key) return
+      clearTimeout(persistRef.current)
+      encryptJson(currentState, key).then((payload) => saveEncryptedSnapshot(payload)).catch(() => {})
     }
     window.addEventListener('beforeunload', onBeforeUnload)
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
-  }, [])
-
-  useEffect(() => {
-    try {
-      if (window.top !== window.self) {
-        lockSession('Embedded frame blocked for security.')
-      }
-    } catch {
-      lockSession('Cross-frame access blocked for security.')
-    }
   }, [])
 
   useEffect(() => {
