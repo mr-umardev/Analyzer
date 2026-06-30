@@ -280,6 +280,7 @@ function App() {
   const [screen, setScreen] = useState('home')
   const [pinInput, setPinInput] = useState('')
   const [pinError, setPinError] = useState('')
+  const [showVaultReset, setShowVaultReset] = useState(false)
   const [failedAttempts, setFailedAttempts] = useState(() => readSessionNumber(FAILED_ATTEMPTS_KEY))
   const [lockoutUntil, setLockoutUntil] = useState(() => readSessionNumber(LOCKOUT_UNTIL_KEY))
   const [clockMs, setClockMs] = useState(Date.now())
@@ -433,6 +434,18 @@ function App() {
     setPinInput('')
     setPinError(message)
     setVaultKey(null)
+  }
+
+  async function resetVault() {
+    try {
+      await saveEncryptedSnapshot(null)
+    } catch { /* ignore */ }
+    localStorage.removeItem('svb-security-salt-v1')
+    setPinError('')
+    setShowVaultReset(false)
+    setPinInput('')
+    setFailedAttempts(0)
+    setLockoutUntil(0)
   }
 
   useEffect(() => {
@@ -616,7 +629,8 @@ function App() {
         setPhase('unlocked')
       }, 1600)
     } catch {
-      setPinError('Unable to unlock vault. Backup may be corrupted.')
+      setPinError('Vault data cannot be decrypted. Your browser may have cleared the encryption key (localStorage) while keeping the stored data. You can reset the vault to start fresh.')
+      setShowVaultReset(true)
     } finally {
       setPinInput('')
       setLoadingState(false)
@@ -1257,6 +1271,8 @@ function App() {
 
   function appendPinDigit(digit) {
     if (loadingState || phase === 'opening' || isPinLockedOut) return
+    setShowVaultReset(false)
+    setPinError('')
     setPinInput((prev) => {
       const next = normalizePin(`${prev}${digit}`)
       if (next.length > prev.length) {
@@ -1286,6 +1302,8 @@ function App() {
 
   function handlePinTyping(event) {
     if (loadingState || phase === 'opening' || isPinLockedOut) return
+    setShowVaultReset(false)
+    setPinError('')
     const next = normalizePin(event.target.value)
     const delta = next.length - pinInput.length
 
@@ -1456,6 +1474,22 @@ function App() {
               {loadingState ? 'Decrypting...' : isPinLockedOut ? `Locked (${lockoutCountdownLabel})` : 'Unlock Vault'}
             </button>
             {pinError && <div className="error-text">{pinError}</div>}
+            {showVaultReset && (
+              <div className="vault-reset-panel">
+                <p className="vault-reset-warning">⚠ This will permanently delete all stored vault data and let you create a new vault with any PIN.</p>
+                <button
+                  type="button"
+                  className="vault-reset-btn"
+                  onClick={() => {
+                    if (window.confirm('Reset vault? All encrypted data will be permanently deleted and cannot be recovered.')) {
+                      resetVault()
+                    }
+                  }}
+                >
+                  Reset Vault &amp; Start Fresh
+                </button>
+              </div>
+            )}
           </form>
         </section>
       )}

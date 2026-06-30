@@ -1157,6 +1157,39 @@ button.secondary {
   margin-top: -0.2rem;
 }
 
+.vault-reset-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: rgba(120, 53, 15, 0.28);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 0.65rem;
+  padding: 0.75rem 0.9rem;
+}
+
+.vault-reset-warning {
+  color: #fcd34d;
+  font-size: 0.82rem;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.vault-reset-btn {
+  align-self: flex-start;
+  background: rgba(185, 28, 28, 0.7);
+  color: #fff;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+
+.vault-reset-btn:hover {
+  background: rgba(220, 38, 38, 0.85);
+}
+
 html {
   scroll-behavior: smooth;
 }
