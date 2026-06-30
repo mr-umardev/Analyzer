@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "Ey44Y3LN3CVlqNPZFTJL1"
+uri = "file://the-vault-source.tar.gz"
+type = "unspecified"
+title = "The Vault — Full Source Code"
