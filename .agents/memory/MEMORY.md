@@ -1,0 +1,1 @@
+- [PostgreSQL vault architecture](vault-architecture.md) — fullstack migration: PIN→sha256 token, PBKDF2 key, AES-GCM payload stored in postgres; no localStorage for secrets.

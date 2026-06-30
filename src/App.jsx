@@ -18,7 +18,7 @@ import {
 } from 'chart.js'
 import { jsPDF } from 'jspdf'
 import './App.css'
-import { decryptJson, deriveVaultKeyCandidates, encryptJson } from './crypto'
+import { decryptJson, deriveVaultKey, encryptJson, generateSalt, sha256Hex } from './crypto'
 import {
   buildMonthlySeries,
   buildTimelineSeries,
@@ -30,12 +30,7 @@ import {
   currency,
   toIsoNow,
 } from './finance'
-import {
-  exportEncryptedBackupFile,
-  importEncryptedBackupFile,
-  loadEncryptedSnapshot,
-  saveEncryptedSnapshot,
-} from './storage'
+import { loadVault, saveVault } from './api'
 
 ChartJS.register(
   CategoryScale,
@@ -49,15 +44,6 @@ ChartJS.register(
   Legend,
 )
 
-const LEGACY_VAULT_PIN = String(
-  import.meta.env.VITE_VAULT_PIN ||
-  import.meta.env.VITE_PASSWORD ||
-  import.meta.env.PASSWORD ||
-  '5920188349',
-)
-  .replace(/\D/g, '')
-  .slice(0, 10)
-const VAULT_PIN_HASH = String(import.meta.env.VITE_VAULT_PIN_HASH || '').trim().toLowerCase()
 const LOCK_AFTER_INACTIVITY_MS = 30 * 60 * 1000
 const SESSION_TIMEOUT_MS = 8 * 60 * 60 * 1000
 const MAX_FAILED_ATTEMPTS = 5
@@ -150,41 +136,10 @@ function greetingByHour(hour) {
   return 'Good night'
 }
 
-function fixedTimeEqual(left, right) {
-  const a = String(left || '')
-  const b = String(right || '')
-  const maxLength = Math.max(a.length, b.length)
-  let mismatch = a.length === b.length ? 0 : 1
-
-  for (let i = 0; i < maxLength; i += 1) {
-    const codeA = i < a.length ? a.charCodeAt(i) : 0
-    const codeB = i < b.length ? b.charCodeAt(i) : 0
-    mismatch |= codeA ^ codeB
-  }
-
-  return mismatch === 0
-}
-
 function normalizePin(value) {
   return String(value || '')
     .replace(/\D/g, '')
     .slice(0, 10)
-}
-
-async function sha256Hex(value) {
-  const encoded = new TextEncoder().encode(String(value || ''))
-  const digest = await crypto.subtle.digest('SHA-256', encoded)
-  const bytes = new Uint8Array(digest)
-  return Array.from(bytes).map((byte) => byte.toString(16).padStart(2, '0')).join('')
-}
-
-async function matchesVaultPin(pin) {
-  const normalized = normalizePin(pin)
-  if (VAULT_PIN_HASH) {
-    const digest = await sha256Hex(normalized)
-    return fixedTimeEqual(digest, VAULT_PIN_HASH)
-  }
-  return fixedTimeEqual(normalized, LEGACY_VAULT_PIN)
 }
 
 function nextQuoteIndex(previousIndex) {
@@ -280,7 +235,6 @@ function App() {
   const [screen, setScreen] = useState('home')
   const [pinInput, setPinInput] = useState('')
   const [pinError, setPinError] = useState('')
-  const [showVaultReset, setShowVaultReset] = useState(false)
   const [failedAttempts, setFailedAttempts] = useState(() => readSessionNumber(FAILED_ATTEMPTS_KEY))
   const [lockoutUntil, setLockoutUntil] = useState(() => readSessionNumber(LOCKOUT_UNTIL_KEY))
   const [clockMs, setClockMs] = useState(Date.now())
@@ -334,6 +288,8 @@ function App() {
   const persistRef = useRef(null)
   const stateRef = useRef(state)
   const vaultKeyRef = useRef(vaultKey)
+  const tokenRef = useRef(null)
+  const saltRef = useRef(null)
   const balanceSectionRef = useRef(null)
   const companySectionRef = useRef(null)
   const balanceChartRef = useRef(null)
@@ -403,11 +359,13 @@ function App() {
 
   async function flushSave() {
     const key = vaultKeyRef.current
+    const token = tokenRef.current
+    const salt = saltRef.current
     const currentState = stateRef.current
-    if (!key) return
+    if (!key || !token || !salt) return
     clearTimeout(persistRef.current)
     const payload = await encryptJson(currentState, key)
-    await saveEncryptedSnapshot(payload)
+    await saveVault(token, salt, payload)
   }
 
   useEffect(() => {
@@ -434,18 +392,6 @@ function App() {
     setPinInput('')
     setPinError(message)
     setVaultKey(null)
-  }
-
-  async function resetVault() {
-    try {
-      await saveEncryptedSnapshot(null)
-    } catch { /* ignore */ }
-    localStorage.removeItem('svb-security-salt-v1')
-    setPinError('')
-    setShowVaultReset(false)
-    setPinInput('')
-    setFailedAttempts(0)
-    setLockoutUntil(0)
   }
 
   useEffect(() => {
@@ -482,9 +428,11 @@ function App() {
     const onBeforeUnload = () => {
       const key = vaultKeyRef.current
       const currentState = stateRef.current
-      if (!key) return
+      const token = tokenRef.current
+      const salt = saltRef.current
+      if (!key || !token || !salt) return
       clearTimeout(persistRef.current)
-      encryptJson(currentState, key).then((payload) => saveEncryptedSnapshot(payload)).catch(() => {})
+      encryptJson(currentState, key).then((payload) => saveVault(token, salt, payload)).catch(() => {})
     }
     window.addEventListener('beforeunload', onBeforeUnload)
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
@@ -497,8 +445,11 @@ function App() {
 
     clearTimeout(persistRef.current)
     persistRef.current = setTimeout(async () => {
+      const token = tokenRef.current
+      const salt = saltRef.current
+      if (!token || !salt) return
       const payload = await encryptJson(state, vaultKey)
-      await saveEncryptedSnapshot(payload)
+      await saveVault(token, salt, payload)
     }, 250)
 
     return () => clearTimeout(persistRef.current)
@@ -544,62 +495,52 @@ function App() {
       return
     }
 
-    if (!window.isSecureContext) {
-      setPinError('Secure context required. Use HTTPS or localhost only.')
-      return
-    }
-
     if (!/^\d{10}$/.test(enteredPin)) {
       setPinError('PIN must be exactly 10 digits.')
-      return
-    }
-
-    const isPinValid = await matchesVaultPin(enteredPin)
-    if (!isPinValid) {
-      const nextAttempts = failedAttempts + 1
-      setFailedAttempts(nextAttempts)
-      if (nextAttempts >= MAX_FAILED_ATTEMPTS) {
-        const nextLockout = Date.now() + LOCKOUT_MS
-        setLockoutUntil(nextLockout)
-        setPinError(`Vault locked for 10 minutes after repeated failures. Unlock at ${new Date(nextLockout).toLocaleTimeString()}.`)
-      } else {
-        setPinError(`Access denied. ${MAX_FAILED_ATTEMPTS - nextAttempts} attempt(s) remaining.`)
-      }
-      setPinInput('')
       return
     }
 
     setLoadingState(true)
 
     try {
-      const keyCandidates = await deriveVaultKeyCandidates(enteredPin)
-      const encryptedSnapshot = await loadEncryptedSnapshot()
+      const token = await sha256Hex(enteredPin)
+      const vaultData = await loadVault(token)
 
-      if (encryptedSnapshot) {
-        let restored = null
-        let unlockedKey = null
+      let key
+      let salt
 
-        for (const candidateKey of keyCandidates) {
-          try {
-            restored = await decryptJson(encryptedSnapshot, candidateKey)
-            unlockedKey = candidateKey
-            break
-          } catch {
-            // Try next key candidate.
+      if (vaultData.exists) {
+        salt = vaultData.salt
+        key = await deriveVaultKey(enteredPin, salt)
+        let restored
+        try {
+          restored = await decryptJson(vaultData.payload, key)
+        } catch {
+          const nextAttempts = failedAttempts + 1
+          setFailedAttempts(nextAttempts)
+          if (nextAttempts >= MAX_FAILED_ATTEMPTS) {
+            const nextLockout = Date.now() + LOCKOUT_MS
+            setLockoutUntil(nextLockout)
+            setPinError(`Vault locked for 10 minutes after repeated failures. Unlock at ${new Date(nextLockout).toLocaleTimeString()}.`)
+          } else {
+            setPinError(`Wrong PIN. ${MAX_FAILED_ATTEMPTS - nextAttempts} attempt(s) remaining.`)
           }
+          setPinInput('')
+          setLoadingState(false)
+          return
         }
-
-        if (!restored || !unlockedKey) {
-          throw new Error('Unable to decrypt snapshot with known key settings')
-        }
-
         setState(sanitizeRestoredState(restored))
-        setVaultKey(unlockedKey)
       } else {
+        salt = generateSalt()
+        key = await deriveVaultKey(enteredPin, salt)
+        const initialPayload = await encryptJson(defaultState(), key)
+        await saveVault(token, salt, initialPayload)
         setState(defaultState())
-        setVaultKey(keyCandidates[0])
       }
 
+      tokenRef.current = token
+      saltRef.current = salt
+      setVaultKey(key)
       setFailedAttempts(0)
       setLockoutUntil(0)
 
@@ -614,9 +555,8 @@ function App() {
         setScreen('home')
         setPhase('unlocked')
       }, 1600)
-    } catch {
-      setPinError('Vault data cannot be decrypted. Your browser may have cleared the encryption key (localStorage) while keeping the stored data. You can reset the vault to start fresh.')
-      setShowVaultReset(true)
+    } catch (err) {
+      setPinError(`Unable to reach the vault server. Check your connection and try again.`)
     } finally {
       setPinInput('')
       setLoadingState(false)
@@ -956,10 +896,17 @@ function App() {
 
   async function exportBackup() {
     try {
-      const backup = await exportEncryptedBackupFile()
-      const blob = new Blob([JSON.stringify(backup, null, 2)], {
-        type: 'application/json',
-      })
+      const token = tokenRef.current
+      const salt = saltRef.current
+      if (!token || !salt) throw new Error('Not unlocked')
+      const vaultData = await loadVault(token)
+      if (!vaultData.exists) throw new Error('No data')
+      const backup = {
+        format: 'svb-backup-v1',
+        exportedAt: new Date().toISOString(),
+        payload: vaultData.payload,
+      }
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -967,7 +914,7 @@ function App() {
       a.click()
       URL.revokeObjectURL(url)
     } catch {
-      setFormError('No encrypted data exists to export yet.')
+      setFormError('No data to export yet.')
     }
   }
 
@@ -1222,25 +1169,19 @@ function App() {
       if (!isValidEncryptedBackup(backup)) {
         throw new Error('Invalid backup structure')
       }
-      await importEncryptedBackupFile(backup)
 
-      const payload = await loadEncryptedSnapshot()
-      let restored = null
-      const keyCandidates = vaultKey ? [vaultKey] : []
+      const token = tokenRef.current
+      const salt = saltRef.current
+      if (!token || !salt || !vaultKey) throw new Error('Not unlocked')
 
-      for (const candidateKey of keyCandidates) {
-        try {
-          restored = await decryptJson(payload, candidateKey)
-          break
-        } catch {
-          // If key is wrong for this backup, fall through to generic error.
-        }
+      let restored
+      try {
+        restored = await decryptJson(backup.payload, vaultKey)
+      } catch {
+        throw new Error('Unable to decrypt backup with current PIN')
       }
 
-      if (!restored) {
-        throw new Error('Unable to decrypt imported backup with current session key')
-      }
-
+      await saveVault(token, salt, backup.payload)
       setState(sanitizeRestoredState(restored))
       setFormError('Backup imported successfully.')
     } catch {
@@ -1257,7 +1198,6 @@ function App() {
 
   function appendPinDigit(digit) {
     if (loadingState || phase === 'opening' || isPinLockedOut) return
-    setShowVaultReset(false)
     setPinError('')
     setPinInput((prev) => {
       const next = normalizePin(`${prev}${digit}`)
@@ -1288,7 +1228,6 @@ function App() {
 
   function handlePinTyping(event) {
     if (loadingState || phase === 'opening' || isPinLockedOut) return
-    setShowVaultReset(false)
     setPinError('')
     const next = normalizePin(event.target.value)
     const delta = next.length - pinInput.length
@@ -1460,22 +1399,6 @@ function App() {
               {loadingState ? 'Decrypting...' : isPinLockedOut ? `Locked (${lockoutCountdownLabel})` : 'Unlock Vault'}
             </button>
             {pinError && <div className="error-text">{pinError}</div>}
-            {showVaultReset && (
-              <div className="vault-reset-panel">
-                <p className="vault-reset-warning">⚠ This will permanently delete all stored vault data and let you create a new vault with any PIN.</p>
-                <button
-                  type="button"
-                  className="vault-reset-btn"
-                  onClick={() => {
-                    if (window.confirm('Reset vault? All encrypted data will be permanently deleted and cannot be recovered.')) {
-                      resetVault()
-                    }
-                  }}
-                >
-                  Reset Vault &amp; Start Fresh
-                </button>
-              </div>
-            )}
           </form>
         </section>
       )}

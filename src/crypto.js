@@ -1,9 +1,7 @@
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
 
-const SECURITY_SALT_KEY = 'svb-security-salt-v1'
 const PBKDF2_ITERATIONS = 600000
-const LEGACY_PBKDF2_ITERATIONS = 250000
 
 function toBase64(bytes) {
   return btoa(String.fromCharCode(...bytes))
@@ -18,19 +16,20 @@ function fromBase64(value) {
   return bytes
 }
 
-function getOrCreateSalt() {
-  const existing = localStorage.getItem(SECURITY_SALT_KEY)
-  if (existing) {
-    return fromBase64(existing)
-  }
-
-  const salt = crypto.getRandomValues(new Uint8Array(16))
-  localStorage.setItem(SECURITY_SALT_KEY, toBase64(salt))
-  return salt
+export function generateSalt() {
+  return toBase64(crypto.getRandomValues(new Uint8Array(16)))
 }
 
-export async function deriveVaultKey(pin, options = {}) {
-  const { iterations = PBKDF2_ITERATIONS } = options
+export async function sha256Hex(value) {
+  const encoded = encoder.encode(String(value || ''))
+  const digest = await crypto.subtle.digest('SHA-256', encoded)
+  const bytes = new Uint8Array(digest)
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+export async function deriveVaultKey(pin, saltBase64) {
   const cleanPin = String(pin || '').trim()
   if (!/^\d{10}$/.test(cleanPin)) {
     throw new Error('Invalid PIN format')
@@ -47,15 +46,12 @@ export async function deriveVaultKey(pin, options = {}) {
   return crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt: getOrCreateSalt(),
-      iterations,
+      salt: fromBase64(saltBase64),
+      iterations: PBKDF2_ITERATIONS,
       hash: 'SHA-256',
     },
     pinMaterial,
-    {
-      name: 'AES-GCM',
-      length: 256,
-    },
+    { name: 'AES-GCM', length: 256 },
     false,
     ['encrypt', 'decrypt'],
   )
@@ -64,14 +60,7 @@ export async function deriveVaultKey(pin, options = {}) {
 export async function encryptJson(payload, key) {
   const iv = crypto.getRandomValues(new Uint8Array(12))
   const encoded = encoder.encode(JSON.stringify(payload))
-  const encryptedBuffer = await crypto.subtle.encrypt(
-    {
-      name: 'AES-GCM',
-      iv,
-    },
-    key,
-    encoded,
-  )
+  const encryptedBuffer = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded)
 
   return {
     version: 1,
@@ -88,21 +77,7 @@ export async function decryptJson(encryptedPayload, key) {
 
   const iv = fromBase64(encryptedPayload.iv)
   const data = fromBase64(encryptedPayload.data)
-  const decryptedBuffer = await crypto.subtle.decrypt(
-    {
-      name: 'AES-GCM',
-      iv,
-    },
-    key,
-    data,
-  )
+  const decryptedBuffer = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data)
 
-  const json = decoder.decode(new Uint8Array(decryptedBuffer))
-  return JSON.parse(json)
-}
-
-export async function deriveVaultKeyCandidates(pin) {
-  const current = await deriveVaultKey(pin, { iterations: PBKDF2_ITERATIONS })
-  const legacy = await deriveVaultKey(pin, { iterations: LEGACY_PBKDF2_ITERATIONS })
-  return [current, legacy]
+  return JSON.parse(decoder.decode(new Uint8Array(decryptedBuffer)))
 }
