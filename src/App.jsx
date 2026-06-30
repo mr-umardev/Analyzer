@@ -30,7 +30,7 @@ import {
   currency,
   toIsoNow,
 } from './finance'
-import { loadVault, saveVault } from './api'
+import { deleteVault, loadVault, saveVault } from './api'
 
 ChartJS.register(
   CategoryScale,
@@ -102,6 +102,19 @@ const HOME_VIEW_MODES = [
   { id: 'visualization-only', label: 'Visualization Only' },
 ]
 
+const TRANSACTION_TYPE_OPTIONS = [
+  { id: 'income', label: 'Income', totalKey: 'income', color: '#d4af37' },
+  { id: 'expenses', label: 'Expenses', totalKey: 'expenses', color: '#7f1d1d' },
+  { id: 'savings', label: 'Savings', totalKey: 'savings', color: '#0f766e' },
+  { id: 'investments', label: 'Investments', totalKey: 'investments', color: '#3b82f6' },
+  { id: 'transfers', label: 'Transfers', totalKey: 'transfers', color: '#64748b' },
+  { id: 'pocket-money', label: 'Pocket Money', totalKey: 'pocketMoney', color: '#f59e0b' },
+  { id: 'gifts', label: 'Gifts', totalKey: 'gifts', color: '#ec4899' },
+  { id: 'reimbursements', label: 'Reimbursements', totalKey: 'reimbursements', color: '#22c55e' },
+  { id: 'bonuses', label: 'Bonuses', totalKey: 'bonuses', color: '#8b5cf6' },
+  { id: 'others', label: 'Others', totalKey: 'others', color: '#06b6d4' },
+]
+
 function defaultState() {
   return {
     mainBalance: 0,
@@ -109,6 +122,25 @@ function defaultState() {
     companies: [],
     updatedAt: toIsoNow(),
   }
+}
+
+function emptyCompanyForm() {
+  return {
+    companyName: '',
+    role: '',
+    promotedFromRole: '',
+    joiningDate: '',
+    leavingDate: '',
+    monthlySalary: '',
+    promotions: '',
+    newMonthlySalary: '',
+    promotedMonths: '',
+    bonuses: '',
+  }
+}
+
+function normalizeCompanyName(value) {
+  return String(value || '').trim().toLowerCase()
 }
 
 function sanitizeNote(note) {
@@ -201,6 +233,7 @@ function sanitizeRestoredState(restored) {
         id: typeof company.id === 'string' ? company.id : crypto.randomUUID(),
         companyName: String(company.companyName || '').trim().slice(0, 80),
         role: String(company.role || '').trim().slice(0, 80),
+        promotedFromRole: String(company.promotedFromRole || '').trim().slice(0, 80),
         joiningDate: isReasonableIsoDate(company.joiningDate) ? company.joiningDate : toIsoNow(),
         leavingDate: company.leavingDate && isReasonableIsoDate(company.leavingDate) ? company.leavingDate : '',
         monthlySalary: Number.isFinite(Number(company.monthlySalary)) ? Math.max(0, Number(company.monthlySalary)) : 0,
@@ -268,17 +301,9 @@ function App() {
   })
 
   const [setBalanceAmount, setSetBalanceAmount] = useState('')
-  const [companyForm, setCompanyForm] = useState({
-    companyName: '',
-    role: '',
-    joiningDate: '',
-    leavingDate: '',
-    monthlySalary: '',
-    promotions: '',
-    newMonthlySalary: '',
-    promotedMonths: '',
-    bonuses: '',
-  })
+  const [companyForm, setCompanyForm] = useState(emptyCompanyForm)
+  const [promotionMode, setPromotionMode] = useState(false)
+  const [promotionCompanyName, setPromotionCompanyName] = useState('')
 
   const [editingCompanyId, setEditingCompanyId] = useState(null)
   const [editTx, setEditTx] = useState(null)
@@ -718,15 +743,18 @@ function App() {
     }))
     if (editingCompanyId === id) {
       setEditingCompanyId(null)
-      setCompanyForm({ companyName: '', role: '', joiningDate: '', leavingDate: '', monthlySalary: '', promotions: '', newMonthlySalary: '', promotedMonths: '', bonuses: '' })
+      setCompanyForm(emptyCompanyForm())
     }
   }
 
   function startEditCompany(company) {
     setEditingCompanyId(company.id)
+    setPromotionMode(false)
+    setPromotionCompanyName('')
     setCompanyForm({
       companyName: company.companyName,
       role: company.role,
+      promotedFromRole: company.promotedFromRole || '',
       joiningDate: company.joiningDate,
       leavingDate: company.leavingDate || '',
       monthlySalary: String(company.monthlySalary),
@@ -740,7 +768,9 @@ function App() {
 
   function cancelEditCompany() {
     setEditingCompanyId(null)
-    setCompanyForm({ companyName: '', role: '', joiningDate: '', leavingDate: '', monthlySalary: '', promotions: '', newMonthlySalary: '', promotedMonths: '', bonuses: '' })
+    setPromotionMode(false)
+    setPromotionCompanyName('')
+    setCompanyForm(emptyCompanyForm())
     setCompanyError('')
   }
 
@@ -815,8 +845,35 @@ function App() {
     const promotedMonths = Number(companyForm.promotedMonths || 0)
     const bonuses = parseAmount(companyForm.bonuses || 0) ?? 0
 
-    if (!companyForm.companyName.trim() || !companyForm.role.trim()) {
+    const selectedCompanyKey = normalizeCompanyName(promotionCompanyName)
+    const sourcePromotionEntry = promotionMode
+      ? state.companies.find(
+          (company) =>
+            normalizeCompanyName(company.companyName) === selectedCompanyKey &&
+            company.id !== editingCompanyId,
+        )
+      : null
+
+    const resolvedCompanyName = promotionMode
+      ? String(sourcePromotionEntry?.companyName || '').trim()
+      : companyForm.companyName.trim()
+
+    if (!resolvedCompanyName || !companyForm.role.trim()) {
       setCompanyError('Company name and role are required.')
+      return
+    }
+
+    if (promotionMode && !sourcePromotionEntry) {
+      setCompanyError('Choose a company to add a promoted role.')
+      return
+    }
+
+    const resolvedPromotedFromRole = promotionMode
+      ? String(sourcePromotionEntry?.role || '').trim()
+      : companyForm.promotedFromRole.trim()
+
+    if (resolvedPromotedFromRole && resolvedPromotedFromRole === companyForm.role.trim()) {
+      setCompanyError('Promoted from role must be different from current role.')
       return
     }
 
@@ -853,8 +910,9 @@ function App() {
     }
 
     const companyData = {
-      companyName: companyForm.companyName.trim().slice(0, 80),
+      companyName: resolvedCompanyName.slice(0, 80),
       role: companyForm.role.trim().slice(0, 80),
+      promotedFromRole: resolvedPromotedFromRole.slice(0, 80),
       joiningDate,
       leavingDate,
       monthlySalary,
@@ -874,24 +932,42 @@ function App() {
       }))
       setEditingCompanyId(null)
     } else {
-      setState((prev) => ({
-        ...prev,
-        companies: [{ id: crypto.randomUUID(), ...companyData }, ...prev.companies],
-        updatedAt: toIsoNow(),
-      }))
+      setState((prev) => {
+        const newEntry = { id: crypto.randomUUID(), ...companyData }
+
+        if (!promotionMode) {
+          return {
+            ...prev,
+            companies: [newEntry, ...prev.companies],
+            updatedAt: toIsoNow(),
+          }
+        }
+
+        const targetIndex = prev.companies.findIndex(
+          (company) => normalizeCompanyName(company.companyName) === normalizeCompanyName(companyData.companyName),
+        )
+
+        if (targetIndex === -1) {
+          return {
+            ...prev,
+            companies: [newEntry, ...prev.companies],
+            updatedAt: toIsoNow(),
+          }
+        }
+
+        const nextCompanies = [...prev.companies]
+        nextCompanies.splice(targetIndex, 0, newEntry)
+        return {
+          ...prev,
+          companies: nextCompanies,
+          updatedAt: toIsoNow(),
+        }
+      })
     }
 
-    setCompanyForm({
-      companyName: '',
-      role: '',
-      joiningDate: '',
-      leavingDate: '',
-      monthlySalary: '',
-      promotions: '',
-      newMonthlySalary: '',
-      promotedMonths: '',
-      bonuses: '',
-    })
+    setPromotionMode(false)
+    setPromotionCompanyName('')
+    setCompanyForm(emptyCompanyForm())
   }
 
   async function exportBackup() {
@@ -915,6 +991,36 @@ function App() {
       URL.revokeObjectURL(url)
     } catch {
       setFormError('No data to export yet.')
+    }
+  }
+
+  async function deleteVaultData() {
+    setFormError('')
+    const token = tokenRef.current
+    if (!token) {
+      setFormError('Vault token not available. Lock and unlock vault again.')
+      return
+    }
+
+    const confirmation = window.prompt('Type DELETE to permanently remove your vault data.')
+    if (confirmation !== 'DELETE') {
+      setFormError('Vault deletion cancelled. Type DELETE exactly to confirm.')
+      return
+    }
+
+    try {
+      await deleteVault(token)
+      setState(defaultState())
+      setEditTx(null)
+      setEditingCompanyId(null)
+      setPromotionMode(false)
+      setPromotionCompanyName('')
+      setCompanyForm(emptyCompanyForm())
+      setSetBalanceAmount('')
+      setAdjustmentForm({ kind: 'income', direction: 'add', amount: '', note: '' })
+      await lockSession('Vault data deleted. Enter PIN to start a fresh vault.')
+    } catch {
+      setFormError('Unable to delete vault data. Ensure vault server is running and try again.')
     }
   }
 
@@ -1244,17 +1350,11 @@ function App() {
   }
 
   const pieData = {
-    labels: ['Income', 'Expenses', 'Savings', 'Investments', 'Transfers'],
+    labels: TRANSACTION_TYPE_OPTIONS.map((option) => option.label),
     datasets: [
       {
-        data: [
-          Math.abs(metrics.totals.income),
-          Math.abs(metrics.totals.expenses),
-          Math.abs(metrics.totals.savings),
-          Math.abs(metrics.totals.investments),
-          Math.abs(metrics.totals.transfers),
-        ],
-        backgroundColor: ['#d4af37', '#7f1d1d', '#0f766e', '#3b82f6', '#64748b'],
+        data: TRANSACTION_TYPE_OPTIONS.map((option) => Math.abs(metrics.totals[option.totalKey] || 0)),
+        backgroundColor: TRANSACTION_TYPE_OPTIONS.map((option) => option.color),
       },
     ],
   }
@@ -1272,8 +1372,36 @@ function App() {
       { labels: [], values: [] },
     )
 
-  const profitLossAmount = Number(metrics.currentBalance || 0)
-  const profitLossLabel = profitLossAmount >= 0 ? 'Profit' : 'Loss'
+  const promotionCompanyOptions = useMemo(() => {
+    const seen = new Set()
+    const options = []
+    for (const company of state.companies) {
+      const clean = String(company.companyName || '').trim()
+      const key = normalizeCompanyName(clean)
+      if (!clean || seen.has(key)) continue
+      seen.add(key)
+      options.push(clean)
+    }
+    return options.sort((a, b) => a.localeCompare(b))
+  }, [state.companies])
+
+  const promotionTimeline = useMemo(() => {
+    return [...state.companies]
+      .filter((company) => company.promotedFromRole)
+      .sort((a, b) => new Date(b.joiningDate) - new Date(a.joiningDate))
+      .map((company) => ({
+        id: `promotion-${company.id}`,
+        companyName: company.companyName,
+        fromRole: company.promotedFromRole,
+        toRole: company.role,
+        effectiveDate: company.joiningDate,
+        salaryBefore: Number(company.monthlySalary || 0),
+        salaryAfter: Number(company.newMonthlySalary || 0),
+      }))
+  }, [state.companies])
+
+  const profitLossAmount = Number(metrics.salaryHikeProfit || 0)
+  const profitLossLabel = profitLossAmount >= 0 ? 'Hike Profit' : 'Hike Loss'
   const saveStatusLabel = state.updatedAt
     ? new Date(state.updatedAt).toLocaleString()
     : 'No local updates yet'
@@ -1775,6 +1903,9 @@ function App() {
               <button type="button" onClick={exportBackup}>
                 Export Encrypted Backup
               </button>
+              <button type="button" className="danger-btn" onClick={deleteVaultData}>
+                Delete Vault Data
+              </button>
               <label className="import-label" htmlFor="import-backup">
                 Import Backup
               </label>
@@ -1836,11 +1967,11 @@ function App() {
                     }))
                   }
                 >
-                  <option value="income">Income</option>
-                  <option value="expenses">Expenses</option>
-                  <option value="savings">Savings</option>
-                  <option value="investments">Investments</option>
-                  <option value="transfers">Transfers</option>
+                  {TRANSACTION_TYPE_OPTIONS.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="form-row">
@@ -1914,6 +2045,43 @@ function App() {
 
           <section ref={companySectionRef} className="panel glass reveal delay-4">
             <h4>Company Career Tracker</h4>
+            <div className="promotion-controls">
+              <button
+                type="button"
+                className={promotionMode ? 'promotion-toggle active' : 'promotion-toggle'}
+                onClick={() => {
+                  setCompanyError('')
+                  setPromotionMode((current) => {
+                    const next = !current
+                    if (next) {
+                      setPromotionCompanyName((prev) => {
+                        if (prev) return prev
+                        return companyForm.companyName.trim()
+                      })
+                    } else {
+                      setPromotionCompanyName('')
+                    }
+                    return next
+                  })
+                }}
+              >
+                {promotionMode ? 'Promotion Mode On' : 'Promoted'}
+              </button>
+              {promotionMode && (
+                <select
+                  value={promotionCompanyName}
+                  onChange={(event) => setPromotionCompanyName(event.target.value)}
+                  aria-label="Select company for promotion"
+                >
+                  <option value="">Select company</option>
+                  {promotionCompanyOptions.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
             <form className="company-form" onSubmit={submitCompany}>
               <input
                 type="text"
@@ -1923,7 +2091,8 @@ function App() {
                 }
                 placeholder="Company name"
                 maxLength={80}
-                required
+                required={!promotionMode}
+                disabled={promotionMode}
               />
               <input
                 type="text"
@@ -2018,6 +2187,7 @@ function App() {
                   <tr>
                     <th>Company</th>
                     <th>Role</th>
+                    <th>Promoted From</th>
                     <th>Duration</th>
                     <th>Promotions</th>
                     <th>Monthly Salary</th>
@@ -2032,6 +2202,7 @@ function App() {
                     <tr key={company.id} className={editingCompanyId === company.id ? 'editing-row' : ''}>
                       <td>{company.companyName}</td>
                       <td>{company.role}</td>
+                      <td>{company.promotedFromRole || '-'}</td>
                       <td>{companyDurationLabel(company)}</td>
                       <td>{company.promotions || 0}</td>
                       <td>{currency(company.monthlySalary)}</td>
@@ -2095,6 +2266,35 @@ function App() {
                 </tbody>
               </table>
             </div>
+
+            <section className="promotion-timeline" aria-label="LinkedIn style promotion timeline">
+              <h4>LinkedIn Promotion Highlights</h4>
+              {promotionTimeline.length === 0 ? (
+                <p className="promotion-empty">
+                  Add a company role entry and fill Promoted from role to show promotion representation.
+                </p>
+              ) : (
+                <div className="promotion-cards">
+                  {promotionTimeline.map((item) => (
+                    <article className="promotion-card" key={item.id}>
+                      <div className="promotion-company">{item.companyName}</div>
+                      <div className="promotion-flow">
+                        <span>{item.fromRole}</span>
+                        <span className="promotion-arrow" aria-hidden="true">{'->'}</span>
+                        <strong>{item.toRole}</strong>
+                      </div>
+                      <div className="promotion-meta">
+                        <span>Effective: {new Date(item.effectiveDate).toLocaleDateString()}</span>
+                        <span>
+                          Salary: {currency(item.salaryBefore)}
+                          {item.salaryAfter > 0 ? ` to ${currency(item.salaryAfter)}` : ''}
+                        </span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
           </section>
 
           <section className="charts-grid reveal delay-5">
@@ -2257,11 +2457,11 @@ function App() {
                             value={editTx.kind}
                             onChange={(e) => setEditTx((p) => ({ ...p, kind: e.target.value }))}
                           >
-                            <option value="income">Income</option>
-                            <option value="expenses">Expenses</option>
-                            <option value="savings">Savings</option>
-                            <option value="investments">Investments</option>
-                            <option value="transfers">Transfers</option>
+                            {TRANSACTION_TYPE_OPTIONS.map((option) => (
+                              <option key={option.id} value={option.id}>
+                                {option.label}
+                              </option>
+                            ))}
                           </select>
                         </td>
                         <td>

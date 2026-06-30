@@ -1075,6 +1075,24 @@
   margin-bottom: 0.8rem;
 }
 
+.promotion-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.promotion-toggle {
+  background: linear-gradient(130deg, rgba(30, 58, 138, 0.5), rgba(30, 64, 175, 0.45));
+  border-color: rgba(96, 165, 250, 0.45);
+}
+
+.promotion-toggle.active {
+  background: linear-gradient(130deg, rgba(16, 185, 129, 0.42), rgba(5, 150, 105, 0.42));
+  border-color: rgba(52, 211, 153, 0.5);
+}
+
 .charts-grid {
   display: grid;
   gap: 0.8rem;
@@ -1131,6 +1149,11 @@ input::placeholder {
   color: var(--muted);
 }
 
+select option {
+  background: #0f172a;
+  color: #e5e7eb;
+}
+
 button {
   background: var(--button-bg);
   border-color: var(--border);
@@ -1142,6 +1165,16 @@ button.secondary {
   margin-left: 0.55rem;
   background: linear-gradient(130deg, rgba(127, 29, 29, 0.32), rgba(75, 10, 10, 0.5));
   border-color: rgba(239, 68, 68, 0.38);
+}
+
+button.danger-btn {
+  background: linear-gradient(135deg, rgba(185, 28, 28, 0.78), rgba(127, 29, 29, 0.82));
+  border-color: rgba(248, 113, 113, 0.52);
+  color: #fff1f1;
+}
+
+button.danger-btn:hover {
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.86), rgba(153, 27, 27, 0.88));
 }
 
 .error-text {
@@ -1456,4 +1489,54 @@ html {
   gap: 10px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.promotion-timeline {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.promotion-empty {
+  margin: 0;
+  color: var(--muted);
+}
+
+.promotion-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.7rem;
+}
+
+.promotion-card {
+  border: 1px solid rgba(212, 175, 55, 0.24);
+  border-radius: 0.8rem;
+  background: linear-gradient(135deg, rgba(15, 25, 39, 0.7), rgba(9, 14, 23, 0.82));
+  padding: 0.75rem 0.8rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.promotion-company {
+  font-weight: 700;
+  color: var(--heading);
+}
+
+.promotion-flow {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--text);
+}
+
+.promotion-arrow {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.promotion-meta {
+  display: grid;
+  gap: 0.2rem;
+  color: var(--muted);
+  font-size: 0.85rem;
 }

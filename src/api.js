@@ -13,3 +13,11 @@ export async function saveVault(token, salt, payload) {
   if (!res.ok) throw new Error(`Save vault failed: ${res.status}`)
   return res.json()
 }
+
+export async function deleteVault(token) {
+  const res = await fetch(`/api/vault/${encodeURIComponent(token)}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) throw new Error(`Delete vault failed: ${res.status}`)
+  return res.json()
+}

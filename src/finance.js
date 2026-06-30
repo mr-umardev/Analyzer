@@ -31,11 +31,11 @@ export function companyTotalMonths(company) {
     return 0
   }
 
-  return Math.max(
-    1,
+  // Always count both start and end months as full months for career calculations.
+  return (
     (end.getUTCFullYear() - start.getUTCFullYear()) * 12 +
-      (end.getUTCMonth() - start.getUTCMonth()) +
-      (end.getUTCDate() >= start.getUTCDate() ? 1 : 0),
+    (end.getUTCMonth() - start.getUTCMonth()) +
+    1
   )
 }
 
@@ -52,6 +52,8 @@ export function companyEarningsBreakdown(company) {
   const usedPromotedSalary = promotions > 0 && newSalary > 0 ? newSalary : 0
   const baseEarnings = roundCurrency(baseMonths * baseSalary)
   const promotedEarnings = roundCurrency(promotedMonths * usedPromotedSalary)
+  const salaryOnlyTotal = roundCurrency(baseEarnings + promotedEarnings)
+  const hikeProfit = roundCurrency(promotedMonths * (usedPromotedSalary - baseSalary))
   const total = roundCurrency(baseEarnings + promotedEarnings + bonuses)
 
   return {
@@ -63,6 +65,8 @@ export function companyEarningsBreakdown(company) {
     bonuses: roundCurrency(bonuses),
     baseEarnings,
     promotedEarnings,
+    salaryOnlyTotal,
+    hikeProfit,
     total,
   }
 }
@@ -83,7 +87,8 @@ export function companyDurationLabel(company) {
 
   const totalMonths =
     (end.getUTCFullYear() - start.getUTCFullYear()) * 12 +
-    (end.getUTCMonth() - start.getUTCMonth())
+    (end.getUTCMonth() - start.getUTCMonth()) +
+    1
   const years = Math.floor(totalMonths / 12)
   const months = totalMonths % 12
 
@@ -100,6 +105,18 @@ export function companyDurationLabel(company) {
 
 export function computeMetrics(state) {
   const transactions = state.transactions || []
+  const kindToTotalKey = {
+    income: 'income',
+    expenses: 'expenses',
+    savings: 'savings',
+    investments: 'investments',
+    transfers: 'transfers',
+    'pocket-money': 'pocketMoney',
+    gifts: 'gifts',
+    reimbursements: 'reimbursements',
+    bonuses: 'bonuses',
+    others: 'others',
+  }
 
   const totals = {
     income: 0,
@@ -107,6 +124,11 @@ export function computeMetrics(state) {
     savings: 0,
     investments: 0,
     transfers: 0,
+    pocketMoney: 0,
+    gifts: 0,
+    reimbursements: 0,
+    bonuses: 0,
+    others: 0,
     additions: 0,
     deductions: 0,
   }
@@ -121,33 +143,50 @@ export function computeMetrics(state) {
       totals.additions += amount
     }
 
-    if (tx.kind === 'income') totals.income += signed
-    if (tx.kind === 'expenses') totals.expenses += -signed
-    if (tx.kind === 'savings') totals.savings += signed
-    if (tx.kind === 'investments') totals.investments += signed
-    if (tx.kind === 'transfers') totals.transfers += signed
+    const totalKey = kindToTotalKey[tx.kind]
+    if (totalKey === 'expenses') {
+      totals.expenses += -signed
+    } else if (totalKey) {
+      totals[totalKey] += signed
+    }
   }
 
-  const firstBalance =
-    transactions.length > 0 ? Number(transactions[0].previousBalance || 0) : 0
-  const currentBalance = Number(state.mainBalance || 0)
-  const financialGrowth =
-    firstBalance === 0
-      ? currentBalance === 0
-        ? 0
-        : 100
-      : ((currentBalance - firstBalance) / Math.abs(firstBalance)) * 100
+  const companyBreakdowns = (state.companies || []).map((company) =>
+    companyEarningsBreakdown(company),
+  )
 
-  const companyEarnings = (state.companies || []).reduce(
-    (sum, company) => sum + companyTotalEarnings(company),
+  // Career earnings: salary only from all companies (base + updated salary months).
+  const companyEarnings = companyBreakdowns.reduce(
+    (sum, breakdown) => sum + breakdown.salaryOnlyTotal,
     0,
   )
+
+  // Profit from salary hike updates (difference between updated and base salary months).
+  const salaryHikeProfit = companyBreakdowns.reduce(
+    (sum, breakdown) => sum + breakdown.hikeProfit,
+    0,
+  )
+
+  const firstSalaryBase = companyBreakdowns.reduce(
+    (sum, breakdown) => sum + breakdown.baseMonths * breakdown.baseSalary + breakdown.promotedMonths * breakdown.baseSalary,
+    0,
+  )
+  const firstSalaryComparable = roundCurrency(firstSalaryBase)
+  const financialGrowth =
+    firstSalaryComparable === 0
+      ? salaryHikeProfit === 0
+        ? 0
+        : 100
+      : (salaryHikeProfit / Math.abs(firstSalaryComparable)) * 100
+
+  const netTransactions = roundCurrency(totals.additions - totals.deductions)
 
   const totalIncome = roundCurrency(Math.max(0, totals.income))
   const totalExpenses = roundCurrency(Math.max(0, totals.expenses))
   const totalSavings = roundCurrency(totals.savings)
+  const currentBalance = roundCurrency(companyEarnings + netTransactions)
+  const lifetimeEarnings = roundCurrency(companyEarnings + totals.expenses + totals.investments)
   const netWorth = roundCurrency(currentBalance + Math.max(0, totals.investments))
-  const lifetimeEarnings = roundCurrency(companyEarnings)
 
   return {
     currentBalance: roundCurrency(currentBalance),
@@ -158,6 +197,7 @@ export function computeMetrics(state) {
     netWorth,
     financialGrowth: roundCurrency(financialGrowth),
     companyEarnings: roundCurrency(companyEarnings),
+    salaryHikeProfit: roundCurrency(salaryHikeProfit),
     totals,
   }
 }
